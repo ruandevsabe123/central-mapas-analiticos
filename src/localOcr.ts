@@ -135,10 +135,8 @@ function findOperation(text: string) {
 
 function classifyOperation(activity: string) {
   const normalized = normalize(activity);
-  if (/plantio/.test(normalized)) return "Plantio de Cana";
-  if (/adubacao|cultivo/.test(normalized)) return "Cultivo";
-  if (/correcao\s+de\s+solo|calcar/.test(normalized))
-    return "Correção de Solo";
+  if (/plantio\s+de\s+baixa\s+densidade/.test(normalized))
+    return "Plantio de Cana";
   return activity;
 }
 
