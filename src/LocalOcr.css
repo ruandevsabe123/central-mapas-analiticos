@@ -129,6 +129,32 @@
   font-size: 8px;
   margin-top: 9px;
 }
+.ocrResult .ocrWarning {
+  color: var(--amber);
+}
+.ocrDebug {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 9px;
+  color: #8ea2bb;
+  font-size: 8px;
+}
+.ocrDebug summary {
+  cursor: pointer;
+  color: var(--cyan);
+}
+.ocrDebug pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 9px;
+  border-radius: 7px;
+  background: #050a11;
+  color: #b9c9dc;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 8px/1.5 monospace;
+}
 @media (max-width: 600px) {
   .ocrImages {
     grid-template-columns: 1fr;

@@ -40,7 +40,19 @@ export async function analyzeSolinftecPrints(
     const summary = summaryImage
       ? (await worker.recognize(await prepareImage(summaryImage, 2))).data.text
       : "";
-    return parseSolinftecText(main, summary);
+    let numericSummary = "";
+    if (summaryImage) {
+      progress(0, "Lendo frotas e médias...");
+      await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SPARSE_TEXT,
+        tessedit_char_whitelist: "0123456789.,",
+        preserve_interword_spaces: "1",
+      });
+      numericSummary = (
+        await worker.recognize(await prepareImage(summaryImage, 3, 0.35))
+      ).data.text;
+    }
+    return parseSolinftecText(main, `${numericSummary}\n${summary}`);
   } finally {
     await worker.terminate();
   }
@@ -112,8 +124,10 @@ function extractEquipmentAverages(
   text: string,
   mapType: string,
 ): EquipmentAverage[] {
-  const clean = text.replace(/(\d)\s*[,.]\s*(\d)/g, "$1.$2");
-  const equipments = [...clean.matchAll(/(?:^|\s)(\d{3,6})(?=\s|$)/gm)]
+  const clean = text
+    .replace(/\b[I|l](?=\d{3,5}\b)/g, "1")
+    .replace(/(\d)\s*[,.]\s*(\d)/g, "$1.$2");
+  const equipments = [...clean.matchAll(/\b(\d{3,6})\b/g)]
     .map((match) => match[1])
     .filter((value) => !/^20\d{2}$/.test(value));
   const decimals = [...clean.matchAll(/\b(\d{1,3}\.\d{1,3})\b/g)]
@@ -149,7 +163,7 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-async function prepareImage(source: string, scale: number) {
+async function prepareImage(source: string, scale: number, cropTop = 0) {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const element = new Image();
     element.onload = () => resolve(element);
@@ -157,12 +171,24 @@ async function prepareImage(source: string, scale: number) {
     element.src = source;
   });
   const canvas = document.createElement("canvas");
+  const sourceY = Math.round(image.naturalHeight * cropTop);
+  const sourceHeight = image.naturalHeight - sourceY;
   canvas.width = Math.round(image.naturalWidth * scale);
-  canvas.height = Math.round(image.naturalHeight * scale);
+  canvas.height = Math.round(sourceHeight * scale);
   const context = canvas.getContext("2d")!;
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  context.filter = "grayscale(1) contrast(1.5)";
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  context.filter = `grayscale(1) contrast(${cropTop ? 2 : 1.5})`;
+  context.drawImage(
+    image,
+    0,
+    sourceY,
+    image.naturalWidth,
+    sourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
   return canvas.toDataURL("image/png");
 }

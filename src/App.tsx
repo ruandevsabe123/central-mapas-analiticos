@@ -734,6 +734,12 @@ function LocalOcrPanel({
                 .join(" • ")}
             </p>
           )}
+          {result.averages.length === 0 && (
+            <p className="ocrWarning">
+              Nenhuma frota ou média foi reconhecida. Abra o texto reconhecido
+              abaixo para conferir o que o OCR conseguiu ler.
+            </p>
+          )}
           {(result.workedArea || result.overlapArea) && (
             <p>
               Área trabalhada: {result.workedArea || "—"} ha • Sobreposição:{" "}
@@ -741,6 +747,10 @@ function LocalOcrPanel({
             </p>
           )}
           <small>Confira especialmente o setor antes de finalizar.</small>
+          <details className="ocrDebug">
+            <summary>Ver texto reconhecido</summary>
+            <pre>{result.rawText || "Nenhum texto reconhecido."}</pre>
+          </details>
         </div>
       )}
     </section>
