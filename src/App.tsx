@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import "./Overview.css";
+import "./LocalOcr.css";
 import { createDemoData, uid } from "./data";
 import { loadData, saveData } from "./storage";
+import { analyzeSolinftecPrints, type LocalAnalysis } from "./localOcr";
 import type {
   AppData,
   EquipmentAverage,
@@ -262,6 +264,7 @@ export default function App() {
             onFinish={finish}
             onCancel={() => setScreen("overview")}
             onDelete={draft.id ? removeMap : undefined}
+            flash={flash}
           />
         )}
       </main>
@@ -597,18 +600,167 @@ function MapCard({
   );
 }
 
+function LocalOcrPanel({
+  draft,
+  setDraft,
+  flash,
+}: {
+  draft: Partial<PrintLegendItem>;
+  setDraft: (map: Partial<PrintLegendItem>) => void;
+  flash: (message: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState("");
+  const [result, setResult] = useState<LocalAnalysis | null>(null);
+  const paste = async (target: "mainImage" | "summaryImage") => {
+    const blob = await readClipboardImage();
+    if (!blob) return flash("Copie o print antes de colar");
+    setDraft({ ...draft, [target]: await fileUrl(blob) });
+    flash(
+      target === "mainImage" ? "Print principal colado ✓" : "Resumo colado ✓",
+    );
+  };
+  const analyze = async () => {
+    if (!draft.mainImage && !draft.summaryImage)
+      return flash("Cole pelo menos um print");
+    setLoading(true);
+    setResult(null);
+    try {
+      const found = await analyzeSolinftecPrints(
+        draft.mainImage || "",
+        draft.summaryImage || "",
+        (value, text) => {
+          setProgress(value);
+          setMessage(text);
+        },
+      );
+      setResult(found);
+      const extracted = {
+        ...(draft.extractedData ?? emptyExtracted()),
+        rawText: found.rawText,
+        detectedMapType: found.mapType,
+        detectedSector: found.sectorHint,
+        detectedOperation: found.operation,
+        detectedDateRange: found.period,
+        equipmentAverages: found.averages.length
+          ? found.averages
+          : (draft.extractedData?.equipmentAverages ?? []),
+        warnings: [],
+      };
+      setDraft({
+        ...draft,
+        mapTypeName: found.mapType || draft.mapTypeName,
+        operationName: found.operation || draft.operationName,
+        extractedData: extracted,
+        finalLegend: "",
+      });
+      flash("Análise concluída — confira os dados ✓");
+    } catch (error) {
+      console.error(error);
+      flash("Não foi possível analisar. Tente prints mais nítidos.");
+    } finally {
+      setLoading(false);
+      setProgress(0);
+    }
+  };
+  return (
+    <section className="ocrPanel">
+      <div className="ocrHeading">
+        <div>
+          <span className="kicker">LEITURA AUTOMÁTICA • GRATUITA</span>
+          <h2>Analisar prints da Solinftec</h2>
+          <p>O processamento acontece neste navegador, sem API paga.</p>
+        </div>
+        <span className="localBadge">OCR LOCAL</span>
+      </div>
+      <div className="ocrImages">
+        <button
+          className={draft.mainImage ? "ocrImage hasImage" : "ocrImage"}
+          onClick={() => paste("mainImage")}
+        >
+          {draft.mainImage ? <img src={draft.mainImage} /> : <span>▣</span>}
+          <b>
+            {draft.mainImage
+              ? "Print principal pronto"
+              : "Colar print principal"}
+          </b>
+          <small>Clique após copiar a imagem</small>
+        </button>
+        <button
+          className={draft.summaryImage ? "ocrImage hasImage" : "ocrImage"}
+          onClick={() => paste("summaryImage")}
+        >
+          {draft.summaryImage ? (
+            <img src={draft.summaryImage} />
+          ) : (
+            <span>▤</span>
+          )}
+          <b>{draft.summaryImage ? "Resumo pronto" : "Colar resumo / média"}</b>
+          <small>Equipamentos e estatísticas</small>
+        </button>
+      </div>
+      <button
+        className="analyzeButton"
+        disabled={loading || (!draft.mainImage && !draft.summaryImage)}
+        onClick={analyze}
+      >
+        {loading ? `${message} ${progress}%` : "◎ Analisar e preencher mapa"}
+      </button>
+      {result && (
+        <div className="ocrResult">
+          <div>
+            <span>
+              TIPO<strong>{result.mapType || "Confirmar"}</strong>
+            </span>
+            <span>
+              OPERAÇÃO<strong>{result.operation || "Confirmar"}</strong>
+            </span>
+            <span>
+              SETOR POSSÍVEL
+              <strong>{result.sectorHint || "Não identificado"}</strong>
+            </span>
+            <span>
+              PERÍODO<strong>{result.period || "Não identificado"}</strong>
+            </span>
+          </div>
+          {result.averages.length > 0 && (
+            <p>
+              ✓ {result.averages.length} equipamento(s):{" "}
+              {result.averages
+                .map(
+                  (item) => `${item.equipment} → ${item.average} ${item.unit}`,
+                )
+                .join(" • ")}
+            </p>
+          )}
+          {(result.workedArea || result.overlapArea) && (
+            <p>
+              Área trabalhada: {result.workedArea || "—"} ha • Sobreposição:{" "}
+              {result.overlapArea || "—"} ha
+            </p>
+          )}
+          <small>Confira especialmente o setor antes de finalizar.</small>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MapForm({
   draft,
   setDraft,
   onFinish,
   onCancel,
   onDelete,
+  flash,
 }: {
   draft: Partial<PrintLegendItem>;
   setDraft: (map: Partial<PrintLegendItem>) => void;
   onFinish: () => void;
   onCancel: () => void;
   onDelete?: () => void;
+  flash: (message: string) => void;
 }) {
   const averages = draft.extractedData?.equipmentAverages ?? [];
   const [pad, setPad] = useState<number | null>(null);
@@ -688,6 +840,7 @@ function MapForm({
       </div>
       <div className="formLayout">
         <section className="definition">
+          <LocalOcrPanel draft={draft} setDraft={setDraft} flash={flash} />
           <h2>Definição do mapa</h2>
           <div className="fields">
             <label>
