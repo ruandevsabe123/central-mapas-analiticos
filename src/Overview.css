@@ -99,6 +99,18 @@ button {
 .topbar > .newButton {
   margin-left: auto;
 }
+.backupActions {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+.backupActions button {
+  font-size: 9px;
+  padding: 8px 10px;
+}
+.topbar > .newButton {
+  margin-left: 0;
+}
 .workspace {
   max-width: 1500px;
   margin: auto;
@@ -652,6 +664,9 @@ button {
     margin-top: 16px;
   }
   .topbar nav {
+    display: none;
+  }
+  .backupActions {
     display: none;
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Overview.css";
 import { createDemoData, uid } from "./data";
 import { loadData, saveData } from "./storage";
@@ -37,6 +37,7 @@ export default function App() {
   const [draft, setDraft] = useState<Partial<PrintLegendItem>>(newMap());
   const [toast, setToast] = useState("");
   const [query, setQuery] = useState("");
+  const backupInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     loadData().then((value) => setData(value ?? createDemoData()));
   }, []);
@@ -53,6 +54,41 @@ export default function App() {
   const openNew = () => {
     setDraft(newMap());
     setScreen("form");
+  };
+  const exportMaps = () => {
+    const blob = new Blob(
+      [
+        JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          data,
+        }),
+      ],
+      { type: "application/json" },
+    );
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `backup-mapas-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    flash("Backup exportado ✓");
+  };
+  const importMaps = async (file: File) => {
+    try {
+      const parsed = JSON.parse(await file.text());
+      const imported = parsed.data ?? parsed;
+      if (!Array.isArray(imported.printItems)) throw new Error("invalid");
+      setData({
+        ...createDemoData(),
+        ...imported,
+        printItems: imported.printItems,
+        presets: imported.presets ?? [],
+      });
+      setScreen("overview");
+      flash(`${imported.printItems.length} mapas importados ✓`);
+    } catch {
+      flash("Arquivo de backup inválido");
+    }
   };
   const openEdit = (map: PrintLegendItem) => {
     setDraft(map);
@@ -184,10 +220,27 @@ export default function App() {
             Adicionar mapa
           </button>
         </nav>
+        <div className="backupActions">
+          <button onClick={exportMaps}>↓ Exportar mapas</button>
+          <button onClick={() => backupInput.current?.click()}>
+            ↑ Importar mapas
+          </button>
+        </div>
         <button className="newButton" onClick={openNew}>
           ＋ Adicionar mapa
         </button>
       </header>
+      <input
+        ref={backupInput}
+        hidden
+        type="file"
+        accept="application/json"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) importMaps(file);
+          event.target.value = "";
+        }}
+      />
       <main className="workspace">
         {screen === "overview" ? (
           <Overview
