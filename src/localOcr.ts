@@ -48,9 +48,20 @@ export async function analyzeSolinftecPrints(
         tessedit_char_whitelist: "0123456789.,",
         preserve_interword_spaces: "1",
       });
-      numericSummary = (
+      const sparseNumbers = (
         await worker.recognize(await prepareImage(summaryImage, 3, 0.48, 0.9))
       ).data.text;
+      await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        tessedit_char_whitelist: "0123456789.,",
+        preserve_interword_spaces: "1",
+      });
+      const blockNumbers = (
+        await worker.recognize(
+          await prepareImage(summaryImage, 3.5, 0.52, 0.88),
+        )
+      ).data.text;
+      numericSummary = `${sparseNumbers}\n--- OCR PASS ---\n${blockNumbers}`;
     }
     return parseSolinftecText(main, summary, numericSummary);
   } finally {
@@ -80,17 +91,19 @@ export function parseSolinftecText(
         : /velocidade|km\s*\/\s*h/.test(plain)
           ? "Velocidade"
           : "";
-  const operation = findOperation(semanticText);
+  const operation = classifyOperation(findOperation(semanticText));
   const period =
     semanticText.match(
       /\b\d{2}\/\d{2}\/\d{4}\s*[-–a]\s*\d{2}\/\d{2}\/\d{4}\b/i,
     )?.[0] ?? "";
   const sectorHint = findSectorHint(semanticText);
   const equipmentBlock = summary.split(/operacao/i)[0];
-  const averages = extractEquipmentAverages(
-    numericSummaryText || equipmentBlock,
-    mapType,
-  );
+  const numericCandidates = numericSummaryText
+    ? numericSummaryText.split(/--- OCR PASS ---/)
+    : [equipmentBlock];
+  const averages = numericCandidates
+    .map((candidate) => extractEquipmentAverages(candidate, mapType))
+    .sort((left, right) => right.length - left.length)[0];
   const workedArea = findLabeledNumber(main, "area trabalhada");
   const overlapArea = findLabeledNumber(main, "area de sobreposicao");
   return {
@@ -118,6 +131,15 @@ function findOperation(text: string) {
     .replace(/^.*?\b\d{4,8}\s*[-–]\s*/i, "")
     .replace(/[^A-ZÀ-Ú0-9 /-]+$/i, "")
     .trim();
+}
+
+function classifyOperation(activity: string) {
+  const normalized = normalize(activity);
+  if (/plantio/.test(normalized)) return "Plantio de Cana";
+  if (/adubacao|cultivo/.test(normalized)) return "Cultivo";
+  if (/correcao\s+de\s+solo|calcar/.test(normalized))
+    return "Correção de Solo";
+  return activity;
 }
 
 function findSectorHint(text: string) {
