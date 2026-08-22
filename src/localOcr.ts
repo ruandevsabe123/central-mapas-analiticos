@@ -49,10 +49,10 @@ export async function analyzeSolinftecPrints(
         preserve_interword_spaces: "1",
       });
       numericSummary = (
-        await worker.recognize(await prepareImage(summaryImage, 3, 0.35))
+        await worker.recognize(await prepareImage(summaryImage, 3, 0.48, 0.9))
       ).data.text;
     }
-    return parseSolinftecText(main, `${numericSummary}\n${summary}`);
+    return parseSolinftecText(main, summary, numericSummary);
   } finally {
     await worker.terminate();
   }
@@ -61,9 +61,15 @@ export async function analyzeSolinftecPrints(
 export function parseSolinftecText(
   mainText: string,
   summaryText: string,
+  numericSummaryText = "",
 ): LocalAnalysis {
-  const rawText = `${mainText}\n${summaryText}`.trim();
-  const plain = normalize(rawText),
+  const rawText = `${mainText}\n${summaryText}${
+    numericSummaryText
+      ? `\n\n--- LEITURA NUMÉRICA DO GRÁFICO ---\n${numericSummaryText}`
+      : ""
+  }`.trim();
+  const semanticText = `${mainText}\n${summaryText}`;
+  const plain = normalize(semanticText),
     main = normalize(mainText),
     summary = normalize(summaryText);
   const mapType =
@@ -74,14 +80,17 @@ export function parseSolinftecText(
         : /velocidade|km\s*\/\s*h/.test(plain)
           ? "Velocidade"
           : "";
-  const operation = findOperation(rawText);
+  const operation = findOperation(semanticText);
   const period =
-    rawText.match(
+    semanticText.match(
       /\b\d{2}\/\d{2}\/\d{4}\s*[-–a]\s*\d{2}\/\d{2}\/\d{4}\b/i,
     )?.[0] ?? "";
-  const sectorHint = findSectorHint(rawText);
+  const sectorHint = findSectorHint(semanticText);
   const equipmentBlock = summary.split(/operacao/i)[0];
-  const averages = extractEquipmentAverages(equipmentBlock || summary, mapType);
+  const averages = extractEquipmentAverages(
+    numericSummaryText || equipmentBlock,
+    mapType,
+  );
   const workedArea = findLabeledNumber(main, "area trabalhada");
   const overlapArea = findLabeledNumber(main, "area de sobreposicao");
   return {
@@ -163,7 +172,12 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-async function prepareImage(source: string, scale: number, cropTop = 0) {
+async function prepareImage(
+  source: string,
+  scale: number,
+  cropTop = 0,
+  cropBottom = 1,
+) {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const element = new Image();
     element.onload = () => resolve(element);
@@ -172,7 +186,8 @@ async function prepareImage(source: string, scale: number, cropTop = 0) {
   });
   const canvas = document.createElement("canvas");
   const sourceY = Math.round(image.naturalHeight * cropTop);
-  const sourceHeight = image.naturalHeight - sourceY;
+  const sourceBottom = Math.round(image.naturalHeight * cropBottom);
+  const sourceHeight = sourceBottom - sourceY;
   canvas.width = Math.round(image.naturalWidth * scale);
   canvas.height = Math.round(sourceHeight * scale);
   const context = canvas.getContext("2d")!;
