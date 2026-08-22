@@ -834,3 +834,183 @@ button:active {
     width: 100%;
   }
 }
+
+@media (min-width: 1001px) {
+  .topbar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 264px;
+    height: 100vh;
+    padding: 26px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    background: linear-gradient(180deg, #0c121e 0%, #080d16 100%);
+  }
+  .logo {
+    padding: 0 8px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .logo > span {
+    width: 46px;
+    height: 46px;
+    font-size: 0;
+    background: #101a29 url("/favicon.svg") center/34px no-repeat;
+  }
+  .topbar nav {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    gap: 6px;
+  }
+  .topbar nav:before {
+    content: "NAVEGAÇÃO";
+    color: #526078;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    padding: 3px 12px 8px;
+  }
+  .topbar nav button {
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 10px;
+    text-align: left;
+  }
+  .topbar nav button:first-of-type:before {
+    content: "◫";
+    margin-right: 11px;
+    color: var(--cyan);
+  }
+  .topbar nav button:nth-of-type(2):before {
+    content: "＋";
+    margin-right: 11px;
+    color: var(--purple);
+  }
+  .topbar nav button.active {
+    color: var(--text);
+    background: linear-gradient(90deg, #18263a, #121b2a);
+    border: 1px solid #2a3952;
+  }
+  .topbar nav button.active:after {
+    width: 3px;
+    height: 22px;
+    inset: 11px auto auto 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .backupActions {
+    margin: auto 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .backupActions:before {
+    content: "DADOS E SEGURANÇA";
+    color: #526078;
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    margin: 0 9px 6px;
+  }
+  .backupActions button {
+    text-align: left;
+    padding: 10px 12px;
+  }
+  .topbar > .newButton {
+    width: 100%;
+    padding: 13px;
+  }
+  .workspace {
+    max-width: none;
+    margin: 0 0 0 264px;
+    padding: 46px clamp(30px, 4vw, 70px) 80px;
+  }
+  .overviewHead {
+    min-height: 190px;
+    padding: 30px 32px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: linear-gradient(115deg, #121d2e 0%, #0d1522 58%, #15213a 100%);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .overviewHead:after {
+    content: "";
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    right: 18%;
+    top: -160px;
+    border: 1px solid #58d6ff22;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 45px #58d6ff08,
+      0 0 0 90px #a78bfa08;
+  }
+  .overviewHead > * {
+    position: relative;
+    z-index: 1;
+  }
+  .overviewHead h1 {
+    font-size: 42px;
+  }
+  .overviewStats span {
+    min-width: 132px;
+    padding: 16px 18px;
+  }
+  .overviewStats b {
+    font-size: 27px;
+  }
+  .overviewTools {
+    margin: 22px 0 18px;
+  }
+  .groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  .operationGroup.open {
+    grid-column: 1/-1;
+  }
+  .operationGroup.open .groupTitle {
+    padding: 22px 24px;
+  }
+  .operationGroup.open .mapGrid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    padding: 0 18px 18px;
+  }
+  .mapImage {
+    height: 220px;
+  }
+  .mapInfo {
+    padding: 19px;
+  }
+  .formHead {
+    padding: 4px 0 8px;
+  }
+  .formLayout {
+    grid-template-columns: minmax(620px, 1fr) 410px;
+    gap: 22px;
+  }
+  .definition {
+    padding: 32px;
+  }
+  .legendLive {
+    padding: 28px;
+  }
+}
+@media (max-width: 1000px) {
+  .topbar {
+    position: sticky;
+    width: auto;
+    height: 76px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 22px;
+  }
+  .workspace {
+    margin-left: 0;
+  }
+}
