@@ -48,6 +48,7 @@ export type PrintLegendItem = {
   finalLegend: string;
   scheduledTime?: string;
   sentAt?: string;
+  status?: "pending_review" | "ready";
   areaPeriod?: "shift" | "total";
   createdAt: string;
   updatedAt: string;

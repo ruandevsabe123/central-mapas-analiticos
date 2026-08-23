@@ -1,0 +1,13 @@
+CAPTURADOR SOLINFTEC - CENTRAL COA
+
+1. Extraia esta pasta em um local permanente.
+2. Abra chrome://extensions ou edge://extensions.
+3. Ative o Modo do desenvolvedor.
+4. Clique em "Carregar sem compactação".
+5. Escolha a pasta capturador-solinftec.
+6. Fixe o ícone do Capturador na barra do navegador.
+
+USO
+Abra o mapa na Solinftec com o painel de equipamentos visível.
+Clique no Capturador, escolha a operação e o tipo e pressione Capturar.
+A Central abrirá automaticamente com o mapa aguardando conferência.

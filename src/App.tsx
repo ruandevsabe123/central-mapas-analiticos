@@ -3,7 +3,11 @@ import "./Overview.css";
 import "./LocalOcr.css";
 import { createDemoData, uid } from "./data";
 import { loadData, saveData } from "./storage";
-import { analyzeSolinftecPrints, type LocalAnalysis } from "./localOcr";
+import {
+  analyzeSolinftecPrints,
+  parseSolinftecText,
+  type LocalAnalysis,
+} from "./localOcr";
 import { usePwaInstall } from "./usePwaInstall";
 import type {
   AppData,
@@ -13,6 +17,18 @@ import type {
 } from "./types";
 
 type Screen = "overview" | "form";
+type SolinftecCapture = {
+  id: string;
+  screenshot: string;
+  rawText: string;
+  panelText: string;
+  operation: string;
+  sector?: string;
+  shift: string;
+  mapType: string;
+  related: boolean;
+  capturedAt: string;
+};
 const emptyExtracted = (): ExtractedPrintData => ({
   rawText: "",
   detectedMapType: "",
@@ -49,6 +65,95 @@ export default function App() {
     if (!data) return;
     const timer = setTimeout(() => saveData(data), 200);
     return () => clearTimeout(timer);
+  }, [data]);
+  useEffect(() => {
+    if (!data) return;
+    const receiveCapture = async (event: MessageEvent) => {
+      if (event.source !== window || event.data?.type !== "SOLINFTEC_CAPTURE")
+        return;
+      const capture = event.data.payload as SolinftecCapture;
+      window.postMessage({ type: "SOLINFTEC_CAPTURE_RECEIVED", id: capture.id });
+      const analysis = parseSolinftecText(capture.rawText, capture.panelText);
+      const detectedPeriod = analysis.period || findSolinftecPeriod(capture.rawText);
+      const sector = capture.sector?.trim() || analysis.sectorHint || "Confirmar setor";
+      const operation = capture.operation.trim();
+      const shift = capture.shift || "C";
+      const duplicate = data.printItems.find(
+        (item) =>
+          item.sectorName?.toLowerCase() === sector.toLowerCase() &&
+          item.operationName?.toLowerCase() === operation.toLowerCase() &&
+          item.mapTypeName === capture.mapType &&
+          item.shift === shift &&
+          item.extractedData?.detectedDateRange === detectedPeriod,
+      );
+      if (duplicate) {
+        setDraft(duplicate);
+        setScreen("form");
+        setToast("Este mapa já existe — abrimos o existente para conferência");
+        return;
+      }
+      const panelImage = await cropLeftPanel(capture.screenshot);
+      const now = new Date().toISOString();
+      const requestedTypes = capture.related
+        ? [...new Set([capture.mapType, "Velocidade", "Vazão", "Área Trabalhada"])]
+        : [capture.mapType];
+      const types = requestedTypes.filter(
+        (mapType) =>
+          !data.printItems.some(
+            (item) =>
+              item.sectorName?.toLowerCase() === sector.toLowerCase() &&
+              item.operationName?.toLowerCase() === operation.toLowerCase() &&
+              item.mapTypeName === mapType &&
+              item.shift === shift &&
+              item.extractedData?.detectedDateRange === detectedPeriod,
+          ),
+      );
+      const created = types.map((mapType) => {
+        const isCapturedType = mapType === capture.mapType;
+        const extractedData: ExtractedPrintData = isCapturedType
+          ? {
+              rawText: analysis.rawText,
+              detectedMapType: mapType,
+              detectedSector: analysis.sectorHint,
+              detectedOperation: analysis.operation,
+              detectedDateRange: detectedPeriod,
+              equipmentAverages: analysis.averages.map((item) => ({
+                ...item,
+                unit: mapType === "Vazão" ? "L/ha" : item.unit,
+              })),
+              warnings: ["Aguardando conferência"],
+            }
+          : emptyExtracted();
+        const item = {
+          ...newMap(),
+          id: uid(),
+          categoryId: "",
+          sectorId: "",
+          operationId: "",
+          mapTypeId: "",
+          sectorName: sector,
+          operationName: operation,
+          mapTypeName: mapType,
+          areaPeriod: mapType === "Área Trabalhada" ? "shift" : undefined,
+          shift,
+          mainImage: isCapturedType ? capture.screenshot : "",
+          summaryImage: isCapturedType ? panelImage : "",
+          extractedData,
+          status: "pending_review",
+          createdAt: capture.capturedAt || now,
+          updatedAt: now,
+        } as PrintLegendItem;
+        item.generatedLegend = buildLegend(item);
+        item.finalLegend = item.generatedLegend;
+        return item;
+      });
+      setData({ ...data, printItems: [...created, ...data.printItems] });
+      setDraft(created[0]);
+      setScreen("form");
+      setToast(`${created.length} mapa(s) recebidos — confira antes de enviar`);
+    };
+    window.addEventListener("message", receiveCapture);
+    return () => window.removeEventListener("message", receiveCapture);
   }, [data]);
   const flash = (message: string) => {
     setToast(message);
@@ -117,6 +222,7 @@ export default function App() {
       extractedData: draft.extractedData ?? emptyExtracted(),
       generatedLegend: buildLegend(draft),
       finalLegend: draft.finalLegend || buildLegend(draft),
+      status: "ready",
       createdAt: draft.createdAt || now,
       updatedAt: now,
     } as PrintLegendItem;
@@ -225,6 +331,9 @@ export default function App() {
           </button>
         </nav>
         <div className="backupActions">
+          <a className="captureDownload" href="/capturador-solinftec.zip" download>
+            ⬇ Capturador Solinftec
+          </a>
           {canInstall && (
             <button
               className="installButton"
@@ -475,7 +584,9 @@ function MapCard({
         const image = imageFromPaste(event);
         if (image) attach(image);
       }}
-      className={map.sentAt ? "mapCardNew sent" : "mapCardNew"}
+      className={`${map.sentAt ? "mapCardNew sent" : "mapCardNew"}${
+        map.status === "pending_review" ? " pendingReview" : ""
+      }`}
     >
       <div className="mapImage">
         {map.mainImage ? (
@@ -1050,6 +1161,46 @@ const fileUrl = (file: Blob) =>
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+async function cropLeftPanel(source: string) {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = reject;
+    element.src = source;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.min(image.naturalWidth, Math.round(image.naturalWidth * 0.2));
+  canvas.height = image.naturalHeight;
+  canvas.getContext("2d")!.drawImage(
+    image,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  return canvas.toDataURL("image/png");
+}
+
+function findSolinftecPeriod(text: string) {
+  const months: Record<string, string> = {
+    janeiro: "01", fevereiro: "02", marco: "03", abril: "04",
+    maio: "05", junho: "06", julho: "07", agosto: "08",
+    setembro: "09", outubro: "10", novembro: "11", dezembro: "12",
+  };
+  const normalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const matches = [...normalized.matchAll(
+    /\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+(\d{1,2}),\s*(\d{4})/g,
+  )];
+  if (matches.length < 2) return "";
+  const format = (match: RegExpMatchArray) =>
+    `${match[2].padStart(2, "0")}/${months[match[1]]}/${match[3]}`;
+  return `${format(matches[0])} – ${format(matches[1])}`;
+}
 function imageFromPaste(event: React.ClipboardEvent) {
   const item = [...event.clipboardData.items].find((entry) =>
     entry.type.startsWith("image/"),

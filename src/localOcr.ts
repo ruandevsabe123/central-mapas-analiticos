@@ -157,7 +157,7 @@ function findSectorHint(text: string) {
     /\bsetor\s*[-:]?\s*([A-Z]{1,8}[.-]?\d{0,4})\b/i,
   )?.[1];
   if (explicit) return explicit.toUpperCase();
-  const fieldCode = text.match(/\b([A-Z]{2,5}\d*)[_-]TA\s*\d+\b/i)?.[1];
+  const fieldCode = text.match(/\b([A-Z]{1,5}\d*)[_-]TA\s*\d+\b/i)?.[1];
   return fieldCode?.toUpperCase() ?? "";
 }
 
