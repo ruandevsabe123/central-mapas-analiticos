@@ -4,6 +4,7 @@ import "./LocalOcr.css";
 import { createDemoData, uid } from "./data";
 import { loadData, saveData } from "./storage";
 import { analyzeSolinftecPrints, type LocalAnalysis } from "./localOcr";
+import { usePwaInstall } from "./usePwaInstall";
 import type {
   AppData,
   EquipmentAverage,
@@ -39,6 +40,7 @@ export default function App() {
   const [draft, setDraft] = useState<Partial<PrintLegendItem>>(newMap());
   const [toast, setToast] = useState("");
   const [query, setQuery] = useState("");
+  const { canInstall, install } = usePwaInstall();
   const backupInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     loadData().then((value) => setData(value ?? createDemoData()));
@@ -223,6 +225,21 @@ export default function App() {
           </button>
         </nav>
         <div className="backupActions">
+          {canInstall && (
+            <button
+              className="installButton"
+              onClick={async () => {
+                const accepted = await install();
+                flash(
+                  accepted
+                    ? "Aplicativo instalado no computador ✓"
+                    : "Instalação cancelada",
+                );
+              }}
+            >
+              ⇩ Instalar no computador
+            </button>
+          )}
           <button onClick={exportMaps}>↓ Exportar mapas</button>
           <button onClick={() => backupInput.current?.click()}>
             ↑ Importar mapas

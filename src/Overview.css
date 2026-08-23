@@ -155,6 +155,12 @@ button:active {
   padding: 8px 11px;
   background: #101725aa;
 }
+.backupActions .installButton {
+  border-color: #58d6ff66;
+  background: #14283a;
+  color: var(--cyan);
+  font-weight: 700;
+}
 .topbar > .newButton {
   margin-left: 0;
 }
