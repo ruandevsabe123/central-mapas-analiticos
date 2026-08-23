@@ -711,8 +711,8 @@ function LocalOcrPanel({
           ) : (
             <span>▤</span>
           )}
-          <b>{draft.summaryImage ? "Resumo pronto" : "Colar resumo / média"}</b>
-          <small>Equipamentos e estatísticas</small>
+          <b>{draft.summaryImage ? "Gráfico pronto" : "Colar gráfico / médias"}</b>
+          <small>Recorte somente gráfico + operação</small>
         </button>
       </div>
       <button

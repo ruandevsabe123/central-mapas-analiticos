@@ -43,6 +43,10 @@ export async function analyzeSolinftecPrints(
     let numericSummary = "";
     if (summaryImage) {
       progress(0, "Lendo frotas e médias...");
+      const { width, height } = await imageDimensions(summaryImage);
+      const compactSummary = width / height > 0.5;
+      const graphTop = compactSummary ? 0.16 : 0.5;
+      const graphBottom = compactSummary ? 0.64 : 0.86;
       await worker.setParameters({
         tessedit_pageseg_mode: PSM.SPARSE_TEXT,
         tessedit_char_whitelist: "0123456789.,",
@@ -50,12 +54,26 @@ export async function analyzeSolinftecPrints(
       });
       const fleetNumbers = (
         await worker.recognize(
-          await prepareImage(summaryImage, 4, 0.5, 0.86, 0, 0.3),
+          await prepareImage(
+            summaryImage,
+            4,
+            graphTop,
+            graphBottom,
+            0,
+            0.3,
+          ),
         )
       ).data.text;
       const averageNumbers = (
         await worker.recognize(
-          await prepareImage(summaryImage, 4, 0.5, 0.86, 0.5, 0.94),
+          await prepareImage(
+            summaryImage,
+            4,
+            graphTop,
+            graphBottom,
+            0.52,
+            0.96,
+          ),
         )
       ).data.text;
       numericSummary = `--- FROTAS ---\n${fleetNumbers}\n--- MEDIAS ---\n${averageNumbers}`;
@@ -219,6 +237,20 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+async function imageDimensions(source: string) {
+  const image = await loadImage(source);
+  return { width: image.naturalWidth, height: image.naturalHeight };
+}
+
+function loadImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = reject;
+    element.src = source;
+  });
+}
+
 async function prepareImage(
   source: string,
   scale: number,
@@ -227,12 +259,7 @@ async function prepareImage(
   cropLeft = 0,
   cropRight = 1,
 ) {
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const element = new Image();
-    element.onload = () => resolve(element);
-    element.onerror = reject;
-    element.src = source;
-  });
+  const image = await loadImage(source);
   const canvas = document.createElement("canvas");
   const sourceY = Math.round(image.naturalHeight * cropTop);
   const sourceX = Math.round(image.naturalWidth * cropLeft);
