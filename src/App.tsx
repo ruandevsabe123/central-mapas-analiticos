@@ -20,6 +20,7 @@ type Screen = "overview" | "form";
 type SolinftecCapture = {
   id: string;
   screenshot: string;
+  panelScreenshot?: string;
   rawText: string;
   panelText: string;
   operation: string;
@@ -92,7 +93,9 @@ export default function App() {
         setToast("Este mapa já existe — abrimos o existente para conferência");
         return;
       }
-      const panelImage = await cropLeftPanel(capture.screenshot);
+      const panelImage = await cropLeftPanel(
+        capture.panelScreenshot || capture.screenshot,
+      );
       const now = new Date().toISOString();
       const requestedTypes = capture.related
         ? [...new Set([capture.mapType, "Velocidade", "Vazão", "Área Trabalhada"])]
@@ -777,7 +780,7 @@ function LocalOcrPanel({
       setDraft({
         ...draft,
         mapTypeName: found.mapType || draft.mapTypeName,
-        operationName: found.operation || draft.operationName,
+        operationName: draft.operationName || found.operation,
         extractedData: extracted,
         finalLegend: "",
       });
@@ -1171,7 +1174,7 @@ async function cropLeftPanel(source: string) {
   });
   const canvas = document.createElement("canvas");
   canvas.width = Math.min(image.naturalWidth, Math.round(image.naturalWidth * 0.2));
-  canvas.height = image.naturalHeight;
+  canvas.height = Math.round(image.naturalHeight * 0.68);
   canvas.getContext("2d")!.drawImage(
     image,
     0,
