@@ -660,9 +660,7 @@ function LocalOcrPanel({
         detectedSector: found.sectorHint,
         detectedOperation: found.operation,
         detectedDateRange: found.period,
-        equipmentAverages: found.averages.length
-          ? found.averages
-          : (draft.extractedData?.equipmentAverages ?? []),
+        equipmentAverages: found.averages,
         warnings: [],
       };
       setDraft({

@@ -48,20 +48,17 @@ export async function analyzeSolinftecPrints(
         tessedit_char_whitelist: "0123456789.,",
         preserve_interword_spaces: "1",
       });
-      const sparseNumbers = (
-        await worker.recognize(await prepareImage(summaryImage, 3, 0.48, 0.9))
-      ).data.text;
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-        tessedit_char_whitelist: "0123456789.,",
-        preserve_interword_spaces: "1",
-      });
-      const blockNumbers = (
+      const fleetNumbers = (
         await worker.recognize(
-          await prepareImage(summaryImage, 3.5, 0.52, 0.88),
+          await prepareImage(summaryImage, 4, 0.5, 0.86, 0, 0.3),
         )
       ).data.text;
-      numericSummary = `${sparseNumbers}\n--- OCR PASS ---\n${blockNumbers}`;
+      const averageNumbers = (
+        await worker.recognize(
+          await prepareImage(summaryImage, 4, 0.5, 0.86, 0.5, 0.94),
+        )
+      ).data.text;
+      numericSummary = `--- FROTAS ---\n${fleetNumbers}\n--- MEDIAS ---\n${averageNumbers}`;
     }
     return parseSolinftecText(main, summary, numericSummary);
   } finally {
@@ -91,19 +88,16 @@ export function parseSolinftecText(
         : /velocidade|km\s*\/\s*h/.test(plain)
           ? "Velocidade"
           : "";
-  const operation = classifyOperation(findOperation(semanticText));
+  const operation = classifyOperation(findOperation(semanticText), semanticText);
   const period =
     semanticText.match(
       /\b\d{2}\/\d{2}\/\d{4}\s*[-–a]\s*\d{2}\/\d{2}\/\d{4}\b/i,
     )?.[0] ?? "";
   const sectorHint = findSectorHint(semanticText);
   const equipmentBlock = summary.split(/operacao/i)[0];
-  const numericCandidates = numericSummaryText
-    ? numericSummaryText.split(/--- OCR PASS ---/)
-    : [equipmentBlock];
-  const averages = numericCandidates
-    .map((candidate) => extractEquipmentAverages(candidate, mapType))
-    .sort((left, right) => right.length - left.length)[0];
+  const averages = numericSummaryText.includes("--- FROTAS ---")
+    ? extractSeparatedAverages(numericSummaryText, mapType)
+    : extractEquipmentAverages(numericSummaryText || equipmentBlock, mapType);
   const workedArea = findLabeledNumber(main, "area trabalhada");
   const overlapArea = findLabeledNumber(main, "area de sobreposicao");
   return {
@@ -133,8 +127,8 @@ function findOperation(text: string) {
     .trim();
 }
 
-function classifyOperation(activity: string) {
-  const normalized = normalize(activity);
+function classifyOperation(activity: string, completeText = activity) {
+  const normalized = normalize(completeText);
   if (/plantio\s+de\s+baixa\s+densidade/.test(normalized))
     return "Plantio de Cana";
   return activity;
@@ -175,6 +169,39 @@ function extractEquipmentAverages(
     }));
 }
 
+function extractSeparatedAverages(text: string, mapType: string) {
+  const fleetText =
+    text.split("--- FROTAS ---")[1]?.split("--- MEDIAS ---")[0] ?? "";
+  const averageText = text.split("--- MEDIAS ---")[1] ?? "";
+  const fleets = [...fleetText.matchAll(/\b\d{3,6}\b/g)].map(
+    (match) => match[0],
+  );
+  const averages = averageText
+    .split(/\s+/)
+    .map(parseChartAverage)
+    .filter((value): value is number => value !== null && value > 0);
+  const unit = normalize(mapType) === "vazao" ? "L/ha" : "km/h";
+  return [...new Set(fleets)]
+    .slice(0, averages.length)
+    .map((equipment, index) => ({
+      equipment,
+      average: String(averages[index]).replace(".", ","),
+      unit,
+    }));
+}
+
+function parseChartAverage(token: string) {
+  const clean = token.replace(/[^\d,.]/g, "").replace(",", ".");
+  if (!clean || /^\d$/.test(clean)) return null;
+  if (clean.includes(".")) {
+    const value = Number(clean);
+    return Number.isFinite(value) && value < 1000 ? value : null;
+  }
+  if (!/^\d{2,4}$/.test(clean)) return null;
+  const decimals = clean.length === 2 ? 1 : 2;
+  return Number(`${clean.slice(0, -decimals)}.${clean.slice(-decimals)}`);
+}
+
 function findLabeledNumber(text: string, label: string) {
   const index = text.indexOf(label);
   if (index < 0) return "";
@@ -197,6 +224,8 @@ async function prepareImage(
   scale: number,
   cropTop = 0,
   cropBottom = 1,
+  cropLeft = 0,
+  cropRight = 1,
 ) {
   const image = await new Promise<HTMLImageElement>((resolve, reject) => {
     const element = new Image();
@@ -206,9 +235,12 @@ async function prepareImage(
   });
   const canvas = document.createElement("canvas");
   const sourceY = Math.round(image.naturalHeight * cropTop);
+  const sourceX = Math.round(image.naturalWidth * cropLeft);
   const sourceBottom = Math.round(image.naturalHeight * cropBottom);
+  const sourceRight = Math.round(image.naturalWidth * cropRight);
   const sourceHeight = sourceBottom - sourceY;
-  canvas.width = Math.round(image.naturalWidth * scale);
+  const sourceWidth = sourceRight - sourceX;
+  canvas.width = Math.round(sourceWidth * scale);
   canvas.height = Math.round(sourceHeight * scale);
   const context = canvas.getContext("2d")!;
   context.imageSmoothingEnabled = true;
@@ -216,9 +248,9 @@ async function prepareImage(
   context.filter = `grayscale(1) contrast(${cropTop ? 2 : 1.5})`;
   context.drawImage(
     image,
-    0,
+    sourceX,
     sourceY,
-    image.naturalWidth,
+    sourceWidth,
     sourceHeight,
     0,
     0,
