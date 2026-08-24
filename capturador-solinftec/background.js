@@ -90,7 +90,7 @@ async function analyzeImage(image) {
       }),
     });
   } catch {
-    throw new Error("Ollama não está aberto. Inicie o Ollama e tente novamente.");
+    throw new Error("Não foi possível acessar a API local. Feche e abra o Ollama após liberar OLLAMA_ORIGINS.");
   }
   if (!response.ok) throw new Error(`IA local respondeu com erro ${response.status}.`);
   const result = await response.json();
