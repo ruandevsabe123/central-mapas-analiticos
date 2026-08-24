@@ -29,6 +29,7 @@ type SolinftecCapture = {
   mapType: string;
   related: boolean;
   capturedAt: string;
+  period?: string;
   directAverages?: Array<{ equipment: string; average: string }>;
   detectedSector?: string;
   detectedActivity?: string;
@@ -87,6 +88,7 @@ export default function App() {
       window.postMessage({ type: "SOLINFTEC_CAPTURE_RECEIVED", id: capture.id });
       const analysis = parseSolinftecText(capture.rawText, capture.panelText);
       const detectedPeriod =
+        capture.period ||
         capture.aiAnalysis?.period ||
         analysis.period ||
         findSolinftecPeriod(capture.rawText);

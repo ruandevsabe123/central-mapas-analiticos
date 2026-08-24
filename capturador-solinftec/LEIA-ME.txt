@@ -8,14 +8,8 @@ CAPTURADOR SOLINFTEC - CENTRAL COA
 6. Fixe o ícone do Capturador na barra do navegador.
 
 USO
-Abra o mapa na Solinftec com o painel de equipamentos visível.
-Clique no Capturador, escolha a operação e o tipo e pressione Capturar.
+Abra o mapa na Solinftec e preencha operação, setor, turno e tipo.
+Adicione as frotas e digite cada média pelo teclado numérico.
+Clique em "Tirar print agora" e confira a imagem.
+Clique em "Confirmar mapa e enviar para a Central".
 A Central abrirá automaticamente com o mapa aguardando conferência.
-
-IA VISUAL LOCAL
-Instale e abra o Ollama: https://ollama.com/download
-No PowerShell, execute uma vez: ollama pull qwen3-vl:4b
-Para permitir a extensão, execute uma vez:
-setx OLLAMA_ORIGINS "chrome-extension://*"
-Depois feche completamente e abra novamente o Ollama.
-No Capturador, use "Analisar imagem com IA local" e confira os dados antes de enviar.
