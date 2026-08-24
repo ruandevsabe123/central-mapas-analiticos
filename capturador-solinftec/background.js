@@ -54,6 +54,7 @@ async function analyzeVisibleMap() {
 }
 
 async function analyzeImage(image) {
+  const images = await prepareAiImages(image);
   let response;
   try {
     response = await fetch("http://127.0.0.1:11434/api/chat", {
@@ -62,6 +63,7 @@ async function analyzeImage(image) {
       body: JSON.stringify({
         model: "qwen3-vl:4b",
         stream: false,
+        think: false,
         format: {
           type: "object",
           properties: {
@@ -83,10 +85,10 @@ async function analyzeImage(image) {
         },
         messages: [{
           role: "user",
-          content: "Analise este print da Solinftec. Leia SOMENTE dados visíveis. Identifique tipo do mapa, setor pelos códigos de talhão (exemplo J2_TA vira J2), atividade, período e todos os pares do gráfico Agrupar por Equipamento: número da frota à esquerda e média à direita na mesma linha. Não use hectares, percentuais, eixos, datas ou código da operação como frota. Preserve vírgula decimal. Se algo não estiver visível, retorne string vazia ou lista vazia. Responda somente no JSON solicitado.",
-          images: [image.replace(/^data:image\/\w+;base64,/, "")],
+          content: "Você recebeu duas imagens da mesma tela Solinftec: a primeira é a visão geral e a segunda é uma ampliação do painel esquerdo. Concentre-se na segunda imagem. Leia SOMENTE dados visíveis. Identifique tipo do mapa, setor pelos códigos de talhão (J2_TA vira J2), atividade, período e TODOS os pares do gráfico Agrupar por Equipamento: frota à esquerda e média à direita na mesma linha. Não use hectares, percentuais, valores dos eixos, datas ou código da operação como frota. Preserve decimais. Se algo não estiver visível, retorne vazio. Responda somente no JSON solicitado.",
+          images,
         }],
-        options: { temperature: 0 },
+        options: { temperature: 0, num_predict: 500, num_ctx: 4096 },
       }),
     });
   } catch {
@@ -99,6 +101,32 @@ async function analyzeImage(image) {
   } catch {
     throw new Error("A IA respondeu, mas não devolveu dados válidos.");
   }
+}
+
+async function prepareAiImages(dataUrl) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const bitmap = await createImageBitmap(blob);
+  const overviewWidth = Math.min(1280, bitmap.width);
+  const overviewHeight = Math.round(bitmap.height * (overviewWidth / bitmap.width));
+  const overview = new OffscreenCanvas(overviewWidth, overviewHeight);
+  overview.getContext("2d").drawImage(bitmap, 0, 0, overviewWidth, overviewHeight);
+  const panelWidth = Math.min(bitmap.width, Math.max(360, Math.round(bitmap.width * 0.23)));
+  const panel = new OffscreenCanvas(panelWidth * 2, bitmap.height * 2);
+  panel.getContext("2d").drawImage(bitmap, 0, 0, panelWidth, bitmap.height, 0, 0, panel.width, panel.height);
+  const [overviewBlob, panelBlob] = await Promise.all([
+    overview.convertToBlob({ type: "image/jpeg", quality: 0.82 }),
+    panel.convertToBlob({ type: "image/png" }),
+  ]);
+  bitmap.close();
+  return Promise.all([blobBase64(overviewBlob), blobBase64(panelBlob)]);
+}
+
+async function blobBase64(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 32768)
+    binary += String.fromCharCode(...bytes.subarray(index, index + 32768));
+  return btoa(binary);
 }
 
 function revealEquipmentPanel() {
