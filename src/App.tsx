@@ -32,6 +32,14 @@ type SolinftecCapture = {
   directAverages?: Array<{ equipment: string; average: string }>;
   detectedSector?: string;
   detectedActivity?: string;
+  aiAnalysis?: {
+    mapType?: string;
+    sector?: string;
+    activity?: string;
+    period?: string;
+    equipmentAverages?: Array<{ equipment: string; average: string }>;
+    confidence?: number;
+  } | null;
 };
 const emptyExtracted = (): ExtractedPrintData => ({
   rawText: "",
@@ -78,9 +86,13 @@ export default function App() {
       const capture = event.data.payload as SolinftecCapture;
       window.postMessage({ type: "SOLINFTEC_CAPTURE_RECEIVED", id: capture.id });
       const analysis = parseSolinftecText(capture.rawText, capture.panelText);
-      const detectedPeriod = analysis.period || findSolinftecPeriod(capture.rawText);
+      const detectedPeriod =
+        capture.aiAnalysis?.period ||
+        analysis.period ||
+        findSolinftecPeriod(capture.rawText);
       const sector =
         capture.sector?.trim() ||
+        capture.aiAnalysis?.sector ||
         capture.detectedSector ||
         analysis.sectorHint ||
         "Confirmar setor";
@@ -127,7 +139,13 @@ export default function App() {
               detectedSector: analysis.sectorHint,
               detectedOperation: analysis.operation,
               detectedDateRange: detectedPeriod,
-              equipmentAverages: capture.directAverages?.length
+              equipmentAverages: capture.aiAnalysis?.equipmentAverages?.length
+                ? capture.aiAnalysis.equipmentAverages.map((item) => ({
+                    ...item,
+                    average: item.average.replace(".", ","),
+                    unit: mapType === "Vazão" ? "L/ha" : "km/h",
+                  }))
+                : capture.directAverages?.length
                 ? capture.directAverages.map((item) => ({
                     ...item,
                     unit: mapType === "Vazão" ? "L/ha" : "km/h",

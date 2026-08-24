@@ -11,3 +11,8 @@ USO
 Abra o mapa na Solinftec com o painel de equipamentos visível.
 Clique no Capturador, escolha a operação e o tipo e pressione Capturar.
 A Central abrirá automaticamente com o mapa aguardando conferência.
+
+IA VISUAL LOCAL
+Instale e abra o Ollama: https://ollama.com/download
+No PowerShell, execute uma vez: ollama pull qwen3-vl:4b
+No Capturador, use "Analisar imagem com IA local" e confira os dados antes de enviar.

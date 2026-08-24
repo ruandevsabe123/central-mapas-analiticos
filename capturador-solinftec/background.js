@@ -1,6 +1,10 @@
 const CENTRAL_URL = "https://central-mapas-analiticos.onrender.com/";
 
 chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+  if (message.type === "ANALYZE_LOCAL_AI") {
+    analyzeVisibleMap().then((data) => respond({ ok: true, data })).catch((error) => respond({ ok: false, error: error.message }));
+    return true;
+  }
   if (message.type === "INSPECT_SOLINFTEC") {
     inspectActiveTab().then((data) => respond({ ok: true, data })).catch((error) => respond({ ok: false, error: error.message }));
     return true;
@@ -33,11 +37,68 @@ async function capture(selection) {
   const screenshot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
   const page = await inspectActiveTab();
   const panelScreenshot = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
-  const packet = { id: crypto.randomUUID(), capturedAt: new Date().toISOString(), screenshot, panelScreenshot, sourceUrl: tab.url, ...page, ...selection };
+  const aiAnalysis = selection.aiAnalysis || (page.directAverages.length ? null : await analyzeImage(panelScreenshot));
+  const packet = { id: crypto.randomUUID(), capturedAt: new Date().toISOString(), screenshot, panelScreenshot, sourceUrl: tab.url, ...page, ...selection, aiAnalysis };
   await chrome.storage.local.set({ pendingSolinftecCapture: packet });
   const tabs = await chrome.tabs.query({ url: `${CENTRAL_URL}*` });
   if (tabs[0]?.id) await chrome.tabs.update(tabs[0].id, { active: true, url: `${CENTRAL_URL}?captura=${Date.now()}` });
   else await chrome.tabs.create({ url: `${CENTRAL_URL}?captura=${Date.now()}` });
+}
+
+async function analyzeVisibleMap() {
+  const tab = await activeSolinftecTab();
+  await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: revealEquipmentPanel });
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const image = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+  return analyzeImage(image);
+}
+
+async function analyzeImage(image) {
+  let response;
+  try {
+    response = await fetch("http://127.0.0.1:11434/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "qwen3-vl:4b",
+        stream: false,
+        format: {
+          type: "object",
+          properties: {
+            mapType: { type: "string" },
+            sector: { type: "string" },
+            activity: { type: "string" },
+            period: { type: "string" },
+            equipmentAverages: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { equipment: { type: "string" }, average: { type: "string" } },
+                required: ["equipment", "average"],
+              },
+            },
+            confidence: { type: "number" },
+          },
+          required: ["mapType", "sector", "activity", "period", "equipmentAverages", "confidence"],
+        },
+        messages: [{
+          role: "user",
+          content: "Analise este print da Solinftec. Leia SOMENTE dados visíveis. Identifique tipo do mapa, setor pelos códigos de talhão (exemplo J2_TA vira J2), atividade, período e todos os pares do gráfico Agrupar por Equipamento: número da frota à esquerda e média à direita na mesma linha. Não use hectares, percentuais, eixos, datas ou código da operação como frota. Preserve vírgula decimal. Se algo não estiver visível, retorne string vazia ou lista vazia. Responda somente no JSON solicitado.",
+          images: [image.replace(/^data:image\/\w+;base64,/, "")],
+        }],
+        options: { temperature: 0 },
+      }),
+    });
+  } catch {
+    throw new Error("Ollama não está aberto. Inicie o Ollama e tente novamente.");
+  }
+  if (!response.ok) throw new Error(`IA local respondeu com erro ${response.status}.`);
+  const result = await response.json();
+  try {
+    return JSON.parse(result.message?.content || "{}");
+  } catch {
+    throw new Error("A IA respondeu, mas não devolveu dados válidos.");
+  }
 }
 
 function revealEquipmentPanel() {
