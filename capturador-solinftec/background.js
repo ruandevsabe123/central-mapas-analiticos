@@ -20,10 +20,12 @@ async function activeSolinftecTab() {
 
 async function inspectActiveTab() {
   const tab = await activeSolinftecTab();
-  await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: revealEquipmentPanel });
+  await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: revealEquipmentPanel });
   await new Promise((resolve) => setTimeout(resolve, 500));
-  const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectPageData });
-  return result;
+  const frames = await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: collectPageData });
+  const candidates = frames.map((frame) => frame.result).filter(Boolean).sort((left, right) => right.directAverages.length - left.directAverages.length || right.rawText.length - left.rawText.length);
+  if (!candidates[0]) throw new Error("Conteúdo da Solinftec não encontrado.");
+  return candidates[0];
 }
 
 async function capture(selection) {
