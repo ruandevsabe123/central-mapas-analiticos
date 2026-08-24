@@ -29,6 +29,9 @@ type SolinftecCapture = {
   mapType: string;
   related: boolean;
   capturedAt: string;
+  directAverages?: Array<{ equipment: string; average: string }>;
+  detectedSector?: string;
+  detectedActivity?: string;
 };
 const emptyExtracted = (): ExtractedPrintData => ({
   rawText: "",
@@ -76,7 +79,11 @@ export default function App() {
       window.postMessage({ type: "SOLINFTEC_CAPTURE_RECEIVED", id: capture.id });
       const analysis = parseSolinftecText(capture.rawText, capture.panelText);
       const detectedPeriod = analysis.period || findSolinftecPeriod(capture.rawText);
-      const sector = capture.sector?.trim() || analysis.sectorHint || "Confirmar setor";
+      const sector =
+        capture.sector?.trim() ||
+        capture.detectedSector ||
+        analysis.sectorHint ||
+        "Confirmar setor";
       const operation = capture.operation.trim();
       const shift = capture.shift || "C";
       const duplicate = data.printItems.find(
@@ -120,10 +127,15 @@ export default function App() {
               detectedSector: analysis.sectorHint,
               detectedOperation: analysis.operation,
               detectedDateRange: detectedPeriod,
-              equipmentAverages: analysis.averages.map((item) => ({
-                ...item,
-                unit: mapType === "Vazão" ? "L/ha" : item.unit,
-              })),
+              equipmentAverages: capture.directAverages?.length
+                ? capture.directAverages.map((item) => ({
+                    ...item,
+                    unit: mapType === "Vazão" ? "L/ha" : "km/h",
+                  }))
+                : analysis.averages.map((item) => ({
+                    ...item,
+                    unit: mapType === "Vazão" ? "L/ha" : item.unit,
+                  })),
               warnings: ["Aguardando conferência"],
             }
           : emptyExtracted();
@@ -231,10 +243,9 @@ export default function App() {
     } as PrintLegendItem;
     setData({
       ...data,
-      printItems: [
-        map,
-        ...data.printItems.filter((item) => item.id !== map.id),
-      ],
+      printItems: draft.id
+        ? data.printItems.map((item) => (item.id === map.id ? map : item))
+        : [map, ...data.printItems],
     });
     setScreen("overview");
     flash("Mapa finalizado e enviado para a Visão Geral ✓");

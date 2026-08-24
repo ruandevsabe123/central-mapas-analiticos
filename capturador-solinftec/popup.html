@@ -1,33 +1,8 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <link rel="stylesheet" href="popup.css" />
-    <title>Capturar mapa</title>
-  </head>
-  <body>
-    <header><span>C</span><div><b>CAPTURADOR SOLINFTEC</b><small>CENTRAL COA</small></div></header>
-    <label>Operação escolhida por você
-      <input id="operation" list="operations" placeholder="Ex.: Plantio de Cana" autofocus />
-      <datalist id="operations">
-        <option value="Plantio de Cana"></option>
-        <option value="Adubação NPK"></option>
-        <option value="Cultivo"></option>
-        <option value="Correção de Solo"></option>
-        <option value="Pré-Emergente"></option>
-      </datalist>
-    </label>
-    <div class="grid">
-      <label>Setor (opcional)<input id="sector" placeholder="Detectar" /></label>
-      <label>Turno<input id="shift" value="C" maxlength="3" /></label>
-    </div>
-    <label>Tipo do mapa
-      <select id="mapType"><option>Velocidade</option><option>Vazão</option><option>Área Trabalhada</option></select>
-    </label>
-    <label class="check"><input id="related" type="checkbox" checked /> Criar também os mapas relacionados que estiverem faltando</label>
-    <button id="capture">Capturar e enviar para a Central</button>
-    <p id="status">Deixe o mapa e o painel de equipamentos visíveis.</p>
-    <script src="popup.js"></script>
-  </body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="popup.css"><title>Capturar mapa</title></head><body>
+<header><span>C</span><div><b>CAPTURADOR SOLINFTEC</b><small>CENTRAL COA</small></div></header>
+<label>Operação escolhida por você<input id="operation" list="operations" placeholder="Ex.: Plantio de Cana" autofocus><datalist id="operations"><option value="Plantio de Cana"><option value="Adubação NPK"><option value="Cultivo"><option value="Correção de Solo"><option value="Pré-Emergente"></datalist></label>
+<div class="grid"><label>Setor (opcional)<input id="sector" placeholder="Detectar"></label><label>Turno<input id="shift" value="C" maxlength="3"></label></div>
+<label>Tipo do mapa<select id="mapType"><option>Velocidade</option><option>Vazão</option><option>Área Trabalhada</option></select></label>
+<label class="check"><input id="related" type="checkbox" checked> Criar também os mapas relacionados que estiverem faltando</label>
+<button id="inspect" class="secondary">1. Ler e conferir dados</button><section id="preview" hidden></section>
+<button id="capture">2. Capturar e enviar para a Central</button><p id="status">Deixe o gráfico por equipamento aberto.</p><script src="popup.js"></script></body></html>
