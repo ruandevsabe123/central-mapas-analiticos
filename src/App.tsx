@@ -365,7 +365,11 @@ export default function App() {
           </button>
         </nav>
         <div className="backupActions">
-          <a className="captureDownload" href="/capturador-solinftec.zip" download>
+          <a
+            className="captureDownload"
+            href={`${import.meta.env.BASE_URL}capturador-solinftec.zip`}
+            download
+          >
             ⬇ Capturador Solinftec
           </a>
           {canInstall && (

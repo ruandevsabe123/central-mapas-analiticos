@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Capturador Solinftec • Central COA",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Captura o mapa visível e envia para a Central de Mapas.",
   "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage", "tabs"],
   "host_permissions": ["<all_urls>"],
@@ -22,7 +22,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://central-mapas-analiticos.onrender.com/*"],
+      "matches": ["https://ruandevsabe123.github.io/central-mapas-analiticos/*"],
       "js": ["bridge.js"],
       "run_at": "document_idle"
     }

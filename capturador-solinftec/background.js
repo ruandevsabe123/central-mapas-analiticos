@@ -1,4 +1,4 @@
-const CENTRAL_URL = "https://central-mapas-analiticos.onrender.com/";
+const CENTRAL_URL = "https://ruandevsabe123.github.io/central-mapas-analiticos/";
 
 chrome.runtime.onMessage.addListener((message, _sender, respond) => {
   if (message.type === "TAKE_SCREENSHOT") {
@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener((message, _sender, respond) => {
 async function activeSourceTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.windowId) throw new Error("Aba ativa não encontrada.");
-  if (tab.url?.includes("central-mapas-analiticos.onrender.com")) throw new Error("Abra o mapa da Solinftec antes de tirar o print.");
+  if (tab.url?.startsWith(CENTRAL_URL)) throw new Error("Abra o mapa da Solinftec antes de tirar o print.");
   return tab;
 }
 
