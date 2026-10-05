@@ -100,40 +100,60 @@ export default function App() {
         "Confirmar setor";
       const operation = capture.operation.trim();
       const shift = capture.shift || "C";
-      const duplicate = data.printItems.find(
-        (item) =>
-          item.sectorName?.toLowerCase() === sector.toLowerCase() &&
-          item.operationName?.toLowerCase() === operation.toLowerCase() &&
-          item.mapTypeName === capture.mapType &&
-          item.shift === shift &&
-          item.extractedData?.detectedDateRange === detectedPeriod,
-      );
-      if (duplicate) {
-        setDraft(duplicate);
-        setScreen("form");
-        setToast("Este mapa já existe — abrimos o existente para conferência");
-        return;
-      }
       const panelImage = await cropLeftPanel(
         capture.panelScreenshot || capture.screenshot,
       );
       const now = new Date().toISOString();
-      const requestedTypes = capture.related
-        ? [...new Set([capture.mapType, "Velocidade", "Vazão", "Área Trabalhada"])]
-        : [capture.mapType];
-      const types = requestedTypes.filter(
-        (mapType) =>
+      const requestedMaps: Array<{
+        mapType: string;
+        areaPeriod?: "shift" | "total";
+      }> = [
+        { mapType: capture.mapType, areaPeriod: capture.mapType === "Área Trabalhada" ? "shift" : undefined },
+        { mapType: "Velocidade" },
+        { mapType: "Vazão" },
+        { mapType: "Área Trabalhada", areaPeriod: "shift" },
+        { mapType: "Área Trabalhada", areaPeriod: "total" },
+      ];
+      const uniqueMaps = requestedMaps.filter(
+        (map, index, maps) =>
+          maps.findIndex(
+            (candidate) =>
+              candidate.mapType === map.mapType &&
+              candidate.areaPeriod === map.areaPeriod,
+          ) === index,
+      );
+      const mapsToCreate = uniqueMaps.filter(
+        ({ mapType, areaPeriod }) =>
           !data.printItems.some(
             (item) =>
               item.sectorName?.toLowerCase() === sector.toLowerCase() &&
               item.operationName?.toLowerCase() === operation.toLowerCase() &&
               item.mapTypeName === mapType &&
               item.shift === shift &&
+              (mapType !== "Área Trabalhada" || item.areaPeriod === areaPeriod) &&
               item.extractedData?.detectedDateRange === detectedPeriod,
           ),
       );
-      const created = types.map((mapType) => {
-        const isCapturedType = mapType === capture.mapType;
+      if (mapsToCreate.length === 0) {
+        const existing = data.printItems.find(
+          (item) =>
+            item.sectorName?.toLowerCase() === sector.toLowerCase() &&
+            item.operationName?.toLowerCase() === operation.toLowerCase() &&
+            item.mapTypeName === capture.mapType &&
+            item.shift === shift &&
+            item.extractedData?.detectedDateRange === detectedPeriod,
+        );
+        if (existing) {
+          setDraft(existing);
+          setScreen("form");
+          setToast("O pacote completo já existe — abrimos o mapa capturado");
+        }
+        return;
+      }
+      const created = mapsToCreate.map(({ mapType, areaPeriod }) => {
+        const isCapturedType =
+          mapType === capture.mapType &&
+          (mapType !== "Área Trabalhada" || areaPeriod === "shift");
         const extractedData: ExtractedPrintData = isCapturedType
           ? {
               rawText: analysis.rawText,
@@ -158,7 +178,11 @@ export default function App() {
                   })),
               warnings: ["Aguardando conferência"],
             }
-          : emptyExtracted();
+          : {
+              ...emptyExtracted(),
+              detectedMapType: mapType,
+              detectedDateRange: detectedPeriod,
+            };
         const item = {
           ...newMap(),
           id: uid(),
@@ -169,7 +193,7 @@ export default function App() {
           sectorName: sector,
           operationName: operation,
           mapTypeName: mapType,
-          areaPeriod: mapType === "Área Trabalhada" ? "shift" : undefined,
+          areaPeriod,
           shift,
           mainImage: isCapturedType ? capture.screenshot : "",
           summaryImage: isCapturedType ? panelImage : "",

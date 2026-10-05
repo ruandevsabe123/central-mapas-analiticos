@@ -4,7 +4,7 @@
 <div class="grid"><label>Setor<input id="sector" placeholder="Ex.: J2"></label><label>Turno<input id="shift" value="C" maxlength="3"></label></div>
 <div class="grid"><label>Tipo do mapa<select id="mapType"><option>Velocidade</option><option>Vazão</option><option>Área Trabalhada</option></select></label><label>Data<input id="period" type="date"></label></div>
 <section class="fleets"><div class="sectionTitle"><b>Frotas e médias</b><button id="addFleet">＋ Adicionar</button></div><div id="fleetRows"></div></section>
-<label class="check"><input id="related" type="checkbox"> Criar mapas relacionados sem imagem</label>
+<label class="check"><input id="related" type="checkbox" checked disabled> Criar pacote completo: velocidade, vazão e áreas trabalhadas</label>
 <section class="shot"><div id="shotEmpty"><b>Print ainda não capturado</b><small>Deixe o mapa como deseja enviar</small></div><img id="shotPreview" hidden></section>
 <button id="take" class="secondary">▣ Tirar print agora</button><button id="send" disabled>Confirmar mapa e enviar para a Central</button><p id="status">Preencha os dados e tire o print.</p>
 <div id="pad" class="pad" hidden><div class="padBox"><small>MÉDIA DA FROTA</small><b id="padFleet"></b><strong id="padValue">0,00</strong><div id="digits"></div><div class="padActions"><button id="clear">Limpar</button><button id="confirmPad">Confirmar</button></div></div></div>

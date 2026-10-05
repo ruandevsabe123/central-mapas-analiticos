@@ -10,6 +10,7 @@ chrome.storage.local.get([...savedFields, DRAFT_KEY], (saved) => {
     const value = draft?.values?.[key] ?? saved[key];
     if (value !== undefined) element[element.type === "checkbox" ? "checked" : "value"] = value;
   });
+  document.getElementById("related").checked = true;
   rows = draft?.rows?.length ? draft.rows : [{ equipment: "", average: "" }];
   screenshot = draft?.screenshot || "";
   if (screenshot) restoreScreenshot();
