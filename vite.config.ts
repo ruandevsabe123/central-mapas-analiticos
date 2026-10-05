@@ -3,14 +3,21 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+const deployBase = process.env.GITHUB_ACTIONS
+  ? '/central-mapas-analiticos/'
+  : '/'
+
 export default defineConfig({
+  // GitHub Pages publica projetos dentro de /<repositorio>/.
+  // Localmente e em outros provedores, a aplicacao continua na raiz.
+  base: deployBase,
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        id: '/',
+        id: deployBase,
         name: 'Central de Mapas Analíticos COA',
         short_name: 'Mapas COA',
         description: 'Preparação e organização de mapas analíticos da operação.',
@@ -19,8 +26,8 @@ export default defineConfig({
         background_color: '#070a12',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
-        scope: '/',
+        start_url: deployBase,
+        scope: deployBase,
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           {
